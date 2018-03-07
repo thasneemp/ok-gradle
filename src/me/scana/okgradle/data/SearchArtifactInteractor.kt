@@ -1,26 +1,15 @@
 package me.scana.okgradle.data
 
+import io.reactivex.Observable
+import io.reactivex.Single
+import me.scana.okgradle.data.repository.ArtifactRepository
+import me.scana.okgradle.data.repository.SearchResult
 
-class SearchArtifactInteractor(val repositories: List<ArtifactRepository>) {
+class SearchArtifactInteractor(private val repositories: List<ArtifactRepository>) {
 
-    suspend fun search(query: String): SearchResult {
-        var artifact: String? = null
-        var suggestion: String? = null
-        var error: Exception? = null
-        for (repository in repositories) {
-            val result = repository.search(query)
-            if (result.error != null) {
-                error = result.error
-                continue
-            }
-            result.suggestion?.let {
-                suggestion = it
-            }
-            if (result.artifact != null) {
-                artifact = result.artifact
-                break
-            }
-        }
-        return SearchResult(artifact, suggestion, error)
+    fun search(query: String) : Observable<SearchResult> {
+        return Single.concat(repositories.map { it.search(query) })
+                .onErrorReturn { SearchResult.Error(it) }
+                .toObservable()
     }
 }
